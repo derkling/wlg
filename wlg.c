@@ -77,7 +77,7 @@ struct wdata {
 	uint32_t pid;
 
 	// Name format "K_000"
-	char name[8];
+	char name[9];
 
 	/* Worker kind */
 #define WORKER_BATCH       0
@@ -358,7 +358,7 @@ worker(void *conf)
 
 	/* Setup worker name */
 	snprintf(wdata->name, sizeof(wdata->name), "wlg_%c%03d",
-		worker_kind[wdata->kind][0], wdata->id+1);
+		worker_kind[wdata->kind][0], wdata->id);
 	prctl(PR_SET_NAME, wdata->name, NULL, NULL, NULL);
 	DB(printf(WD("worker created\n")));
 
@@ -574,9 +574,12 @@ main(int argc, char *argv[])
 
 	/* Allocate BATCH workers */
 	for (i = 0; i < conf_bw; ++i) {
-		workers_data[w+i].id = i;
+		workers_data[w+i].id = i+1;
 		workers_data[w+i].pid = 0;
 		workers_data[w+i].kind = WORKER_BATCH;
+
+		printf(FI("wlg_B%03d: batch\n"), i+1);
+
 		workers[w+i] = create_worker(workers_data+w+i);
 	}
 	w += i;
@@ -584,7 +587,7 @@ main(int argc, char *argv[])
 	/* Allocate INTERACTIVE workers */
 	strsep(&conf_iparams, ",");
 	for (i = 0; i < conf_iw; ++i) {
-		workers_data[w+i].id = i;
+		workers_data[w+i].id = i+1;
 		workers_data[w+i].pid = 0;
 		workers_data[w+i].kind = WORKER_INTERACTIVE;
 
@@ -593,7 +596,7 @@ main(int argc, char *argv[])
 		param = strsep(&conf_iparams, ",");
 		sscanf(param, "%d", &p2);
 
-		DB(printf(FD("wgI[%03d]: %d, %d\n"), i+1, p1, p2));
+		printf(FI("wlg_I%03d: max_interval %6d [us], max_duration %6d [us]\n"), i+1, p1, p2);
 		workers_data[w+i].params.interrupt.interval_max = p1;
 		workers_data[w+i].params.interrupt.duration_max = p2;
 		/* workers_data[w+i].params.interrupt.interval_max = 500e3; // 500 ms */
@@ -606,7 +609,7 @@ main(int argc, char *argv[])
 	/* Allocate PERIODIC workers */
 	strsep(&conf_pparams, ",");
 	for (i = 0; i < conf_pw; ++i) {
-		workers_data[w+i].id = i;
+		workers_data[w+i].id = i+1;
 		workers_data[w+i].pid = 0;
 		workers_data[w+i].kind = WORKER_PERIODC;
 
@@ -619,7 +622,7 @@ main(int argc, char *argv[])
 			exit(-1);
 		}
 
-		DB(printf(FD("wgP[%03d]: %d, %d\n"), i+1, p1, p2));
+		printf(FI("wlg_P%03d:     interval %6d [us], duty-cycle   %6d [%%]\n"), i+1, p1, p2);
 		workers_data[w+i].params.period.duration =   p1;
 		workers_data[w+i].params.period.duty_cycle = p2;
 
