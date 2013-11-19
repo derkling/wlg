@@ -18,3 +18,11 @@ trace:
 	sudo trace-cmd record -e "sched:*" ./wlg -d5 -b1 -p1,100000,30 -i1,200000,3000
 	kernelshark
 
+ifndef CORE
+  CORE=3
+endif
+
+trace1c:
+	sudo trace-cmd record -e "sched:*" taskset -c ${CORE} ./wlg -d5 -b1 -p1,100000,30 -i1,200000,3000
+	kernelshark
+
