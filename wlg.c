@@ -58,12 +58,14 @@ static int conf_vr = 0;     // Verbose output
 static uint8_t conf_bw = 0; // BATCH workers count
 static uint8_t conf_iw = 0; // INTERACTIVE workers count
 static uint8_t conf_pw = 0; // PERIODIC workers count
+static uint8_t conf_yw = 0; // YIELD workers count
 static uint8_t conf_tm = 0;
 static uint8_t conf_td = 5; // Test duration
 static struct timespec start_ts;
 static struct timespec end_ts;
 static char *conf_iparams;
 static char *conf_pparams;
+static char *conf_yparams;
 static float start_us = 0;
 static uint32_t pid = 0;
 
@@ -83,6 +85,7 @@ struct wdata {
 #define WORKER_BATCH       0
 #define WORKER_INTERACTIVE 1
 #define WORKER_PERIODC     2
+#define WORKER_YIELD       3
 	uint8_t kind;
 
 	/* Worker params */
@@ -95,11 +98,15 @@ struct wdata {
 			uint32_t duration;
 			uint32_t duty_cycle;
 		} period;
+		struct {
+			uint32_t period;
+			uint32_t interval;
+		} yield;
 	} params;
 
 };
 
-static char *worker_kind[] = { "Batch", "Interactive", "Periodic" };
+static char *worker_kind[] = { "Batch", "Interactive", "Periodic", "Yield" };
 
 
 static void
@@ -346,6 +353,58 @@ worker_periodic(struct wdata *wdata)
 	}
 }
 
+static void
+worker_yield(struct wdata *wdata)
+{
+	uint32_t period   = wdata->params.yield.period;
+	uint32_t interval = wdata->params.yield.interval;
+	struct timespec now_ts, end_ts, yield_ts;
+
+	/* Configure processing end */
+	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	timespec_add_us(&end_ts, period);
+
+	// Burst period
+	DB(printf(WD("burst  for %9d [us]\n"), period));
+	while (1) {
+		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		//printf("Now processing @ ");
+		//timespec_print(&now_ts);
+		if (timespec_older(&now_ts , &end_ts))
+			break;
+		busy_loop();
+	}
+
+	/* Configure yield end */
+	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	timespec_add_us(&end_ts, period);
+
+	/* Configure next yield time */
+	clock_gettime(CLOCK_MONOTONIC, &yield_ts);
+	DB(printf(WD("Sum first yield to @ ")));
+	DB(timespec_print(&yield_ts));
+	timespec_add_us(&yield_ts, interval);
+
+	// Yield period
+	DB(printf(WD("yield  for %9d [us]\n"), period));
+	DB(printf(WD("next yield @ ")));
+	DB(timespec_print(&yield_ts));
+	while (1) {
+		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		DB(printf(WD("Now processing @ ")));
+		DB(timespec_print(&now_ts));
+		if (timespec_older(&now_ts , &end_ts))
+			break;
+		// Yield if an interval has passed
+		if (timespec_older(&now_ts , &yield_ts)) {
+			timespec_add_us(&yield_ts, interval);
+			DB(printf(WD("YIELD, next yield @")));
+			DB(timespec_print(&yield_ts));
+			pthread_yield();
+		}
+	}
+}
+
 static void *
 worker(void *conf)
 {
@@ -382,6 +441,9 @@ worker(void *conf)
 		case WORKER_PERIODC:
 			worker_periodic(wdata);
 			break;
+		case WORKER_YIELD:
+			worker_yield(wdata);
+			break;
 		}
 
 	}
@@ -395,7 +457,7 @@ worker(void *conf)
 // Setup workload
 ////////////////////////////////////////////////////////////////////////////////
 
-static char *opts = "b:d:hi:p:";
+static char *opts = "b:d:hi:p:y:";
 static struct option long_options[] =
 {
 	{"batch",    required_argument, 0, 'b'},
@@ -404,6 +466,7 @@ static struct option long_options[] =
 	{"intrrupt", required_argument, 0, 'i'},
 	{"process",  required_argument, 0, 'p'},
 	{"verbose",  no_argument,       &conf_vr, 1},
+	{"yield",    required_argument, 0, 'y'},
 	{0, 0, 0, 0}
 };
 
@@ -426,6 +489,9 @@ print_usage(char *prog)
 	fprintf(stderr, "   -p N,[<P,D>] - spawn N PERIODC tasks with the specified execution model:\n");
 	fprintf(stderr, "            period duration of P [us]\n");
 	fprintf(stderr, "            running duty-cycle of D [us]\n");
+	fprintf(stderr, "   -y N,[<P,I>] - spawn N YIELD tasks with the specified execution model:\n");
+	fprintf(stderr, "            burst/yield period duration of P [us]\n");
+	fprintf(stderr, "            yielding interval of I [us] (during the yield period)\n");
 	fprintf(stderr, " \n");
 }
 
@@ -476,6 +542,14 @@ parse_cmdline(int argc, char *argv[])
 				goto exit_error;
 			}
 			conf_pparams = optarg;
+			break;
+		case 'y':
+			/* DB(printf(FD("Y [%s]\n"), optarg)); */
+			if (sscanf(optarg, "%hhu", &conf_yw) < 1) {
+				fprintf(stderr, FE("Wrong YIELD workload specification\n"));
+				goto exit_error;
+			}
+			conf_yparams = optarg;
 			break;
 		default:
 			print_usage(argv[0]);
@@ -565,7 +639,7 @@ main(int argc, char *argv[])
 	printf(FI("Setup workers..\n"));
 
 	/* Allocate handlers for workers */
-	workers_count = conf_bw + conf_iw + conf_pw;
+	workers_count = conf_bw + conf_iw + conf_pw + conf_yw;
 	workers = malloc(workers_count + sizeof(pthread_t));
 	workers_data = malloc(workers_count * sizeof(struct wdata));
 
@@ -628,6 +702,33 @@ main(int argc, char *argv[])
 
 		/* workers_data[w+i].params.period.duration = 500e3; // 500 ms */
 		/* workers_data[w+i].params.period.duty_cycle = 10;  //  10 % */
+
+		workers[w+i] = create_worker(workers_data+w+i);
+	}
+	w += i;
+
+	/* Allocate YIELD workers */
+	strsep(&conf_yparams, ",");
+	for (i = 0; i < conf_yw; ++i) {
+		workers_data[w+i].id = i+1;
+		workers_data[w+i].pid = 0;
+		workers_data[w+i].kind = WORKER_YIELD;
+
+		param = strsep(&conf_yparams, ",");
+		sscanf(param, "%d", &p1);
+		param = strsep(&conf_yparams, ",");
+		sscanf(param, "%d", &p2);
+		if (p2 > p1) {
+			fprintf(stderr, FE("Wrong YIELD workload specification (period > yield_interval)\n"));
+			exit(-1);
+		}
+
+		printf(FI("wlg_Y%03d:     period %6d [us], yield_interval %6d [us]\n"), i+1, p1, p2);
+		workers_data[w+i].params.yield.period =   p1;
+		workers_data[w+i].params.yield.interval = p2;
+
+		/* workers_data[w+i].params.yield.period  = 500e3;  // 500 ms */
+		/* workers_data[w+i].params.yield.interval = 10e3;  //  10 ms */
 
 		workers[w+i] = create_worker(workers_data+w+i);
 	}
