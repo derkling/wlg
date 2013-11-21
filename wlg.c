@@ -156,7 +156,7 @@ timespec_elapsed_us(struct timespec *ref_ts)
 
 void timespec_add_ms(struct timespec *ts, uint32_t ms)
 {
-	int sec = ms / S_TO_MS;
+	uint32_t sec = ms / S_TO_MS;
 	ms = ms - sec * S_TO_MS;
 
 	// perform the addition
@@ -169,7 +169,7 @@ void timespec_add_ms(struct timespec *ts, uint32_t ms)
 
 void timespec_add_us(struct timespec *ts, uint32_t us)
 {
-	int sec = us / S_TO_US;
+	uint32_t sec = us / S_TO_US;
 	us = us - sec * S_TO_US;
 
 	// perform the addition
@@ -182,7 +182,7 @@ void timespec_add_us(struct timespec *ts, uint32_t us)
 
 void timespec_add_ns(struct timespec *ts, uint32_t ns)
 {
-	int sec = ns / S_TO_NS;
+	uint32_t sec = ns / S_TO_NS;
 	ns = ns - sec * S_TO_NS;
 
 	// perform the addition
