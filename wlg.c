@@ -757,11 +757,8 @@ main(int argc, char *argv[])
 
 	/* Compute end test time */
 	clock_gettime(CLOCK_MONOTONIC, &end_ts);
-
-	uint32_t ns = (uint32_t)1e9 - start_ts.tv_nsec + start_ts.tv_nsec;
-	printf(FI("Time: %d.%d\n"),
-			(uint32_t)end_ts.tv_sec - (uint32_t)start_ts.tv_sec + ns / (uint32_t)1e9,
-			ns % (uint32_t)1e9);
+	timespec_subtract(&end_ts, &start_ts);
+	printf(FI("Time: %lu.%lu\n"), end_ts.tv_sec, end_ts.tv_nsec / MS_TO_NS);
 
 	return 0;
 
