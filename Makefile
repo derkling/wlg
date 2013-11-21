@@ -8,7 +8,7 @@ endif
 all: wlg
 
 wlg: wlg.c Makefile
-	gcc -O3 -o $@ $< ${CFLAGS} -lpthread -lrt
+	gcc -O3 -o $@ $< ${CFLAGS} --static -lpthread -lrt
 
 PHONY: clean trace
 clean:
