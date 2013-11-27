@@ -133,7 +133,7 @@ inline pid_t gettid() {
 
 void timespec_now(struct timespec *ts)
 {
-	clock_gettime(CLOCK_MONOTONIC, ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, ts);
 }
 
 float
@@ -143,7 +143,7 @@ timespec_elapsed_us(struct timespec *ref_ts)
 	float ref_us = start_us;
 	float now_us;
 
-	clock_gettime(CLOCK_MONOTONIC, &now_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 
 	if (ref_ts != NULL)
 		ref_us = ((float)ref_ts->tv_sec * S_TO_US + (float)ref_ts->tv_nsec / US_TO_NS);
@@ -303,14 +303,14 @@ worker_interactive(struct wdata *wdata)
 	DB(printf(WD("process  for %9d [us]\n"), process));
 
 	/* Configure processing end */
-	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
 	timespec_add_us(&end_ts, process);
 
 	//printf("End processing @ ");
 	//timespec_print(&end_ts);
 
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		//printf("Now processing @ ");
 		//timespec_print(&now_ts);
 		if (timespec_older(&now_ts , &end_ts))
@@ -337,14 +337,14 @@ worker_periodic(struct wdata *wdata)
 	DB(printf(WD("process  for %9d [us]\n"), process));
 
 	/* Configure processing end */
-	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
 	timespec_add_us(&end_ts, process);
 
 	//printf("End processing @ ");
 	//timespec_print(&end_ts);
 
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		//printf("Now processing @ ");
 		//timespec_print(&now_ts);
 		if (timespec_older(&now_ts , &end_ts))
@@ -361,13 +361,13 @@ worker_yield(struct wdata *wdata)
 	struct timespec now_ts, end_ts, yield_ts;
 
 	/* Configure processing end */
-	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
 	timespec_add_us(&end_ts, period);
 
 	// Burst period
 	DB(printf(WD("burst  for %9d [us]\n"), period));
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		//printf("Now processing @ ");
 		//timespec_print(&now_ts);
 		if (timespec_older(&now_ts , &end_ts))
@@ -376,11 +376,11 @@ worker_yield(struct wdata *wdata)
 	}
 
 	/* Configure yield end */
-	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
 	timespec_add_us(&end_ts, period);
 
 	/* Configure next yield time */
-	clock_gettime(CLOCK_MONOTONIC, &yield_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &yield_ts);
 	DB(printf(WD("Sum first yield to @ ")));
 	DB(timespec_print(&yield_ts));
 	timespec_add_us(&yield_ts, interval);
@@ -390,7 +390,7 @@ worker_yield(struct wdata *wdata)
 	DB(printf(WD("next yield @ ")));
 	DB(timespec_print(&yield_ts));
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		DB(printf(WD("Now processing @ ")));
 		DB(timespec_print(&now_ts));
 		if (timespec_older(&now_ts , &end_ts))
@@ -426,7 +426,7 @@ worker(void *conf)
 	while (1) {
 	
 		/* Check end of test */
-		clock_gettime(CLOCK_MONOTONIC, &now_ts);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		if (now_ts.tv_sec >= end_ts.tv_sec)
 			break;
 	
@@ -627,7 +627,7 @@ main(int argc, char *argv[])
 	pid = gettid();
 
 	/* Compute end test time */
-	clock_gettime(CLOCK_MONOTONIC, &start_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
 	start_us = ((float)start_ts.tv_sec * S_TO_US + (float)start_ts.tv_nsec / US_TO_NS);
 	end_ts.tv_sec = start_ts.tv_sec + conf_td;
 	end_ts.tv_nsec = start_ts.tv_nsec;
@@ -756,7 +756,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Compute end test time */
-	clock_gettime(CLOCK_MONOTONIC, &end_ts);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
 	timespec_subtract(&end_ts, &start_ts);
 	printf(FI("Time: %lu.%lu\n"), end_ts.tv_sec, end_ts.tv_nsec / MS_TO_NS);
 
