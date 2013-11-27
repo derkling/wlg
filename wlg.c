@@ -750,6 +750,7 @@ main(int argc, char *argv[])
 	pthread_mutex_lock(&start_mtx);
 	DB(printf(FI("Start workers...\n")));
 	pthread_cond_broadcast(&start_cv);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
 	pthread_mutex_unlock(&start_mtx);
 	
 	DB(printf(FD("Wait for workers termination...\n")));
