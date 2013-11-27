@@ -431,7 +431,7 @@ worker(void *conf)
 	
 		/* Check end of test */
 		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
-		if (now_ts.tv_sec >= end_ts.tv_sec)
+		if (timespec_older(&now_ts, &end_ts))
 			break;
 	
 		/* Do workload */
