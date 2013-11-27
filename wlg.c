@@ -62,7 +62,6 @@ static uint8_t conf_yw = 0; // YIELD workers count
 static uint8_t conf_tm = 0;
 static uint8_t conf_td = 5; // Test duration
 static struct timespec start_ts;
-static struct timespec end_ts;
 static char *conf_iparams;
 static char *conf_pparams;
 static char *conf_yparams;
@@ -410,6 +409,7 @@ worker(void *conf)
 {
 	struct wdata *wdata = (struct wdata*) conf;
 	struct timespec now_ts;
+	struct timespec end_ts;
 
 	/* Setup random number generator */
 	wdata->pid = gettid();
@@ -422,6 +422,10 @@ worker(void *conf)
 	DB(printf(WD("worker created\n")));
 
 	sync_start(wdata);
+
+	/* Setup worker termination time */
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
+	end_ts.tv_sec += conf_td;
 
 	while (1) {
 	
@@ -620,6 +624,7 @@ static pthread_t *workers;
 int
 main(int argc, char *argv[])
 {
+	struct timespec end_ts;
 	char *param = NULL;
 	uint8_t i, w = 0;
 	uint32_t p1, p2;
@@ -629,8 +634,6 @@ main(int argc, char *argv[])
 	/* Compute end test time */
 	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
 	start_us = ((float)start_ts.tv_sec * S_TO_US + (float)start_ts.tv_nsec / US_TO_NS);
-	end_ts.tv_sec = start_ts.tv_sec + conf_td;
-	end_ts.tv_nsec = start_ts.tv_nsec;
 
 	parse_cmdline(argc, argv);
 	printf(FI("Running for %d [s] with (B,I,P) workers: (%d,%d,%d)\n"),
