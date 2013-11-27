@@ -753,7 +753,7 @@ main(int argc, char *argv[])
 	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
 	pthread_mutex_unlock(&start_mtx);
 	
-	DB(printf(FD("Wait for workers termination...\n")));
+	printf(FI("Wait for workers termination...\n"));
 	for (i = 0; i < w; ++i) {
 		pthread_join(workers[i], NULL);
 		DB(printf(FD("%s joined!\n"), workers_data[i].name));
