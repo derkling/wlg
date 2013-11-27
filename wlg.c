@@ -743,7 +743,7 @@ main(int argc, char *argv[])
 	DB(printf(FD("Wait for workers being ready...\n")));
 	for (i = 0; i < w; ++i) {
 		while (!workers_data[i].pid)
-			usleep(10000);
+			usleep(1000);
 		DB(printf(FD("%s ready!\n"), workers_data[i].name));
 	}
 
