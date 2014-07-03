@@ -105,7 +105,8 @@ struct wdata {
 
 };
 
-static char *worker_kind[] = { "Batch", "Interactive", "Periodic", "Yield" };
+static char *worker_kind[] = {
+	"Batch", "Interactive", "Periodic", "Yield" };
 
 
 static void
@@ -145,9 +146,11 @@ timespec_elapsed_us(struct timespec *ref_ts)
 	clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 
 	if (ref_ts != NULL)
-		ref_us = ((float)ref_ts->tv_sec * S_TO_US + (float)ref_ts->tv_nsec / US_TO_NS);
+		ref_us = ((float)ref_ts->tv_sec * S_TO_US
+			+ (float)ref_ts->tv_nsec / US_TO_NS);
 
-	now_us  = ((float)now_ts.tv_sec * S_TO_US)  + ((float)now_ts.tv_nsec / US_TO_NS);
+	now_us  = ((float)now_ts.tv_sec * S_TO_US)
+		+ ((float)now_ts.tv_nsec / US_TO_NS);
 
 	return now_us - ref_us;
 
@@ -242,7 +245,7 @@ void timespec_print(struct timespec *a)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Workers definition 
+// Workers definition
 ////////////////////////////////////////////////////////////////////////////////
 
 /* Block until we're ready to go */
@@ -428,12 +431,12 @@ worker(void *conf)
 	end_ts.tv_sec += conf_td;
 
 	while (1) {
-	
+
 		/* Check end of test */
 		clock_gettime(CLOCK_MONOTONIC_RAW, &now_ts);
 		if (timespec_older(&now_ts, &end_ts))
 			break;
-	
+
 		/* Do workload */
 		switch (wdata->kind) {
 		case WORKER_BATCH:
@@ -584,24 +587,6 @@ create_worker(struct wdata *wdata)
 	pthread_t childid;
 	int err;
 
-//	/* process mode */
-//	if (!conf_tm) {
-//		/* fork the worker */
-//		switch(fork()) {
-//		case -1:
-//			barf("fork()");
-//			break;
-//		case 0:
-//			worker(wdata);
-//			exit(0);
-//			break;
-//		default:
-//			break;
-//		}
-//
-//		return (pthread_t)0;
-//	}
-
 	/* thread mode */
 	if (pthread_attr_init(&attr) != 0)
 		barf("pthread_attr_init:");
@@ -633,7 +618,8 @@ main(int argc, char *argv[])
 
 	/* Compute end test time */
 	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
-	start_us = ((float)start_ts.tv_sec * S_TO_US + (float)start_ts.tv_nsec / US_TO_NS);
+	start_us = ((float)start_ts.tv_sec * S_TO_US
+		+ (float)start_ts.tv_nsec / US_TO_NS);
 
 	parse_cmdline(argc, argv);
 	printf(FI("Running for %d [s] with (B,I,P) workers: (%d,%d,%d)\n"),
@@ -673,11 +659,10 @@ main(int argc, char *argv[])
 		param = strsep(&conf_iparams, ",");
 		sscanf(param, "%d", &p2);
 
-		printf(FI("wlg_I%03d: max_interval %6d [us], max_duration %6d [us]\n"), i+1, p1, p2);
+		printf(FI("wlg_I%03d: max_interval %6d [us], max_duration %6d [us]\n"),
+			i+1, p1, p2);
 		workers_data[w+i].params.interrupt.interval_max = p1;
 		workers_data[w+i].params.interrupt.duration_max = p2;
-		/* workers_data[w+i].params.interrupt.interval_max = 500e3; // 500 ms */
-		/* workers_data[w+i].params.interrupt.duration_max = 20e3;  //   2 ms */
 
 		workers[w+i] = create_worker(workers_data+w+i);
 	}
@@ -699,7 +684,8 @@ main(int argc, char *argv[])
 			exit(-1);
 		}
 
-		printf(FI("wlg_P%03d:     interval %6d [us], duty-cycle   %6d [%%]\n"), i+1, p1, p2);
+		printf(FI("wlg_P%03d:     interval %6d [us], duty-cycle   %6d [%%]\n"),
+			i+1, p1, p2);
 		workers_data[w+i].params.period.duration =   p1;
 		workers_data[w+i].params.period.duty_cycle = p2;
 
@@ -730,9 +716,6 @@ main(int argc, char *argv[])
 		workers_data[w+i].params.yield.period =   p1;
 		workers_data[w+i].params.yield.interval = p2;
 
-		/* workers_data[w+i].params.yield.period  = 500e3;  // 500 ms */
-		/* workers_data[w+i].params.yield.interval = 10e3;  //  10 ms */
-
 		workers[w+i] = create_worker(workers_data+w+i);
 	}
 	w += i;
@@ -752,7 +735,7 @@ main(int argc, char *argv[])
 	pthread_cond_broadcast(&start_cv);
 	clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
 	pthread_mutex_unlock(&start_mtx);
-	
+
 	printf(FI("Wait for workers termination...\n"));
 	for (i = 0; i < w; ++i) {
 		pthread_join(workers[i], NULL);
