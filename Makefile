@@ -14,6 +14,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+CC=arm-linux-gnueabihf-gcc
 
 ifdef DEBUG
   CFLAGS=-DDEBUG -g
@@ -24,7 +25,7 @@ endif
 all: wlg
 
 wlg: wlg.c Makefile
-	gcc -O3 -o $@ $< ${CFLAGS} --static -lpthread -lrt
+	$(CC) ${CFLAGS} --static -o $@ $< -lpthread -lrt
 
 PHONY: clean trace
 clean:
